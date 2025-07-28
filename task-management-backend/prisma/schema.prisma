@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(CLIENT)
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  createdTasks    Task[]     @relation("TaskCreator")
+  assignedTasks   Task[]     @relation("TaskAssignee")
+  uploadedFiles   File[]     @relation("FileUploader")
+  remarks         Remark[]
+  fileRemarks     FileRemark[]  // Add this line
+  
+  @@map("users")
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?  @db.Text
+  startDate   DateTime
+  endDate     DateTime
+  taskType    TaskType
+  status      TaskStatus @default(CREATED)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Foreign Keys
+  createdById Int
+  assignedToId Int?
+
+  // Relations
+  createdBy   User     @relation("TaskCreator", fields: [createdById], references: [id])
+  assignedTo  User?    @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  files       File[]
+  remarks     Remark[]
+  
+  @@map("tasks")
+}
+
+model File {
+  id          Int      @id @default(autoincrement())
+  name        String
+  originalName String
+  path        String
+  mimetype    String
+  size        Int
+  version     Int      @default(1)
+  uploadedAt  DateTime @default(now())
+
+  // Foreign Keys
+  taskId      Int
+  uploadedById Int
+
+  // Relations
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy  User     @relation("FileUploader", fields: [uploadedById], references: [id])
+  remarks     FileRemark[]  // Add this line
+  
+  @@map("files")
+}
+
+model Remark {
+  id        Int      @id @default(autoincrement())
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  // Foreign Keys
+  taskId    Int
+  authorId  Int
+
+  // Relations
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  @@map("remarks")
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+  PRODUCT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TaskType {
+  DESIGN
+  DEVELOPMENT
+  TESTING
+  MARKETING
+  RESEARCH
+  DOCUMENTATION
+}
+
+enum TaskStatus {
+  CREATED
+  ASSIGNED
+  IN_REVIEW
+  REVISION_REQUIRED
+  APPROVED
+  PUBLISHED
+}
+
+model FileRemark {
+  id        Int      @id @default(autoincrement())
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  // Foreign Keys
+  fileId    Int
+  authorId  Int
+
+  // Relations
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  @@map("file_remarks")
+}
